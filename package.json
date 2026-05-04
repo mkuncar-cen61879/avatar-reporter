@@ -1,0 +1,8 @@
+{
+  "name": "avatar-reporter",
+  "version": "1.0.0",
+  "description": "AVATAR – dashboard hodnocení produkčních konverzací",
+  "scripts": {
+    "build": "node build.js"
+  }
+}
