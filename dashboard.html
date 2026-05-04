@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AVATAR — Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a56db; --danger: #dc2626; --warning: #f59e0b;
+            --success: #16a34a; --bg: #f3f4f6; --card: #fff;
+            --text: #1f2937; --muted: #6b7280; --border: #e5e7eb;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+
+        .header { background: linear-gradient(135deg, #1e3a8a 0%, #1a56db 100%); color: #fff; padding: 2rem 2rem 1.5rem; }
+        .header h1 { font-size: 1.75rem; font-weight: 700; }
+        .header p { color: rgba(255,255,255,.8); margin-top: .25rem; font-size: .95rem; }
+        .container { max-width: 1360px; margin: 0 auto; padding: 1.5rem; }
+
+        /* Date filter */
+        .filter-bar { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+        .filter-btn {
+            padding: .45rem 1rem; border-radius: 8px; border: 1px solid var(--border);
+            background: var(--card); cursor: pointer; font-size: .85rem; font-weight: 500;
+            transition: all .15s;
+        }
+        .filter-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+        /* KPI */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .kpi-card { background: var(--card); border-radius: 12px; padding: 1.15rem 1.4rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); border-left: 4px solid var(--primary); }
+        .kpi-card.danger  { border-left-color: var(--danger); }
+        .kpi-card.warning { border-left-color: var(--warning); }
+        .kpi-card.success { border-left-color: var(--success); }
+        .kpi-card.info    { border-left-color: #6366f1; }
+        .kpi-card { cursor: pointer; transition: transform .1s, box-shadow .15s; }
+        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+        .kpi-card.selected { outline: 2px solid var(--primary); outline-offset: 2px; }
+        .kpi-value { font-size: 2rem; font-weight: 700; }
+        .kpi-label { font-size: .82rem; color: var(--muted); margin-top: .1rem; }
+        .kpi-pct   { font-size: .85rem; color: var(--muted); font-weight: 600; }
+
+        /* KPI Detail */
+        .kpi-detail { background: var(--card); border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); overflow-x: auto; margin-bottom: 1.5rem; display: none; }
+        .kpi-detail.visible { display: block; }
+        .kpi-detail h3 { font-size: .95rem; margin-bottom: .75rem; }
+        .kpi-detail-close { float: right; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--muted); padding: .2rem .5rem; }
+        .kpi-detail-close:hover { color: var(--text); }
+
+        /* Charts */
+        .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px,1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+        .chart-card { background: var(--card); border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+        .chart-card h3 { font-size: .95rem; margin-bottom: .75rem; }
+        .chart-card.full { grid-column: 1 / -1; }
+
+        /* Table */
+        .table-card { background: var(--card); border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); overflow-x: auto; margin-bottom: 1.5rem; }
+        .table-card h3 { font-size: .95rem; margin-bottom: .75rem; }
+        table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+        th { background: #f9fafb; text-align: left; padding: .65rem .9rem; border-bottom: 2px solid var(--border); font-weight: 600; white-space: nowrap; }
+        td { padding: .65rem .9rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+        tr:hover td { background: #f9fafb; }
+        .badge { display: inline-block; padding: .12rem .55rem; border-radius: 999px; font-size: .72rem; font-weight: 600; }
+        .badge-high   { background: #fee2e2; color: #991b1b; }
+        .badge-medium { background: #fef3c7; color: #92400e; }
+        .badge-low    { background: #dbeafe; color: #1e40af; }
+        .badge-ok     { background: #dcfce7; color: #166534; }
+        .badge-type   { background: #f3f4f6; color: #374151; }
+
+        .footer { text-align: center; padding: 1.5rem; color: var(--muted); font-size: .8rem; }
+
+        @media (max-width: 640px) {
+            .chart-grid { grid-template-columns: 1fr; }
+            .container { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div style="max-width:1360px;margin:0 auto;">
+        <h1>AVATAR</h1>
+        <p>Hodnocení produkčních konverzací &bull; Vygenerováno 4. 5. 2026</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="filter-bar" id="filterBar"></div>
+    <div class="filter-bar" id="initiatorBar" style="margin-top:.25rem"></div>
+    <div class="kpi-grid" id="kpiGrid"></div>
+    <div class="kpi-detail" id="kpiDetail">
+        <button class="kpi-detail-close" onclick="closeKPIDetail()">&times;</button>
+        <h3 id="kpiDetailTitle"></h3>
+        <table id="kpiDetailTable">
+            <thead><tr>
+                <th>Datum</th><th>ID</th><th>Shrnutí</th><th>Typ problému</th><th>Iniciátor</th>
+            </tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="chart-grid">
+        <div class="chart-card full">
+            <h3>📈 Trend po dnech</h3>
+            <div style="max-height:280px"><canvas id="chartTrend"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <h3>Rozložení podle typu problému</h3>
+            <div style="max-height:320px"><canvas id="chartProblemType"></canvas></div>
+        </div>
+
+        <div class="chart-card">
+            <h3>Doporučení</h3>
+            <div id="recommendationsList" style="max-height:320px;overflow-y:auto"></div>
+        </div>
+        <div class="chart-card">
+            <h3>Přepojení dle typu problému</h3>
+            <div style="max-height:320px"><canvas id="chartHandoff"></canvas></div>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <h3>🔴 Konverzace vyžadující pozornost</h3>
+        <table id="attentionTable">
+            <thead><tr>
+                <th>Datum</th><th>ID</th><th>Typ problému</th><th>Dopad</th><th>Detail</th><th>Doporučení</th><th>Iniciátor</th>
+            </tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="footer">MTN Evaluátor Dashboard &copy; 2026</div>
+
+<script>
+// ── Embedded data ──
+const ALL_DATA = [{"ID konverzace":"3fy7IfrOhD71","Shrnutí konverzace":"Klient se vyjádřil neurčitě, avatar požádal o ověření jména a příjmení klienta před pokračováním.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy7Ew3owLQb","Shrnutí konverzace":"Klient zahájil konverzaci, ale nedokonal svůj dotaz. Avatar správně požádal o klientovo jméno a příjmení k ověření totožnosti. Klient přestal reagovat po výzvě k ověření.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy7G02gXj1z","Shrnutí konverzace":"Klient byl vyzván k ověření identity opakovaně, ale Avatar stále opakoval stejnou výzvu k ověření jména. Konverzace se zacyklila během ověřování identity a nebyla dokončena.","Typ problému":"Mini flow","Detail problému":"Avatar se zacyklil při výzvě k ověření identity klienta a nepostoupil v konverzaci.","Doporučení":"Prověřit logiku flow při ověřování identity, aby se zabránilo opakovaným neúspěšným výzvám.","Dopad":"High","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy7LQ1CzSjF","Shrnutí konverzace":"Klient neodpověděl na uvítání Avatara. Avatar správně zareagoval úvodním pozdravem. Nelze určit, proč konverzace skončila.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy7NRedFxij","Shrnutí konverzace":"Klient neodpověděl na uvítání Avatara. Avatar správně zareagoval úvodním pozdravem. Nelze určit, proč konverzace skončila.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy7UI1VQomn","Shrnutí konverzace":"Avatar přivítal klienta a vyzval ho k akci. Klient neodpověděl, konverzace tak neproběhla. Avatar zde správně použil uvítání, ale klient nezareagoval.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy7WN2yZAW5","Shrnutí konverzace":"Klient neodpověděl na uvítání Avatara. Avatar správně zareagoval úvodním pozdravem. Nelze určit, proč konverzace skončila.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy8Kh1gdPmg","Shrnutí konverzace":"Klient se chtěl informovat o úvěru, konkrétně nezajištěném úvěru. Avatar poskytl informace o sjednání úvěru online i na pobočce a následně přepojil na online bankéře. Avatar přepojil na operátora.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy8m01rhyi7","Shrnutí konverzace":"Klient se snažil řešit trvalý příkaz, ale Avatar opakovaně žádal o ověření bez reakce na klientovy stížnosti. Konverzace se zacyklila bez dosažení řešení klientského problému.","Typ problému":"Mini flow","Detail problému":"Avatar stále opakoval stejnou výzvu k ověření, aniž by reagoval na klientovy stížnosti na sekání.","Doporučení":"Prověřit logiku v procesu ověření a zajistit, aby avatar adekvátně reagoval na nevýznamné podněty od klienta.","Dopad":"High","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy95S34sp1L","Shrnutí konverzace":"Klient se zeptal Avatara na jeho stav, což je spíše společenská otázka než bankovní dotaz. Avatar správně odpověděl, že se má dobře. Konverzace přirozeně skončila poté, co Avatar odpověděl.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy9Nl25gFAr","Shrnutí konverzace":"Klient se zajímal o podnikatelské účty a jejich podmínky. Avatar poskytl informace o několika druzích účtů, ale nebyl schopen vysvětlit, co znamená aktivní používání účtu. Avatar se rozloučil po zodpovězení dotazu a přiznání mezery v informacích.","Typ problému":"KBase - chybí info","Detail problému":"Chybí informace o podmínkách aktivního používání účtu.","Doporučení":"Doplnit znalostní bázi o podmínkách aktivního používání podnikatelských účtů.","Dopad":"","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy9VA29ZI5v","Shrnutí konverzace":"Avatar pozdravil klienta a vyzval ho k akci. Klient neodpověděl, což naznačuje, že konverzace skončila bez další reakce od klienta. Avatar se zachoval správně dle designu, protože reagoval na ticho výzvou k akci.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy9WU1a7Ltm","Shrnutí konverzace":"Klient odpověděl na úvod Avatara s výrazem 'jsem schválně'. Avatar na to správně reagoval výzvou k ověření identity. Klient přestal reagovat po výzvě k ověření.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy9XO3g4Pza","Shrnutí konverzace":"Avatar správně pozdravil klienta a vyzval k akci. Klient neodpověděl po uvítání. Avatar fungoval podle designu konverzace.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy9Y73YD5br","Shrnutí konverzace":"Avatar se vůbec nenačetl, uvítání bylo prázdné, což značí technickou chybu při inicializaci. Konverzace nemohla proběhnout.","Typ problému":"Platforma","Detail problému":"Avatar se nenačetl — prázdné uvítání.","Doporučení":"Vyšetřit příčinu pádu nebo nenačtení avatara a provést opravy na systému, aby se avatar spolehlivě načítal.","Dopad":"High","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy9YN15SJqF","Shrnutí konverzace":"Avatar se představil a vyzval klienta k akci, ale klient na uvítání neodpověděl. Konverzace skončila, protože klient neodpověděl na výzvu Avatara.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"","Shrnutí konverzace":"Avatar správně pozdravil klienta a vyzval k akci. Klient neodpověděl po uvítání. Avatar fungoval podle designu konverzace.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy9aZ1021E1","Shrnutí konverzace":"Avatar správně pozdravil klienta a vyzval k akci. Klient neodpověděl po uvítání. Avatar fungoval podle designu konverzace.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy9lD2VC797","Shrnutí konverzace":"Klient požádal o pomoc při blokaci karty, ale konverzace se zacyklila v opakovaném zobrazování instrukcí pro blokaci karty. Konverzace se zacyklila bez vyřešení dotazu klienta.","Typ problému":"Mini flow","Detail problému":"Avatar opakovaně zobrazoval informace o blokaci karty bez přímé interakce s klientem, což vedlo ke zacyklení konverzace.","Doporučení":"Prozkoumat příčinu zacyklení a opravit flow pro blokaci karty, aby klient mohl úspěšně dokončit proces bez opakování instrukcí.","Dopad":"High","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fy9pJ1cBQV5","Shrnutí konverzace":"Avatar se vůbec nenačetl, uvítání bylo prázdné, což značí technickou chybu při inicializaci. Konverzace nemohla proběhnout.","Typ problému":"Platforma","Detail problému":"Avatar se nenačetl — prázdné uvítání.","Doporučení":"Vyšetřit příčinu pádu nebo nenačtení avatara a provést opravy na systému, aby se avatar spolehlivě načítal.","Dopad":"High","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyAAD3h8pSc","Shrnutí konverzace":"Avatar správně vedl klienta procesem ověření identity a nabídl další pomoc po zastavení procesu blokování karty.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyADE22E1zh","Shrnutí konverzace":"Klient požádal o zablokování karty a Avatar provedl potřebné ověření a úspěšně kartu zablokoval. Avatar také nabídl možnost objednat novou kartu, což klient odmítl. Avatar se rozloučil po zodpovězení dotazu.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyAIq2Y0Z1t","Shrnutí konverzace":"Klient potřeboval pomoc s nalezením možnosti změny trvalého příkazu v aplikaci George. Avatar žádal o ověření, ale klient odmítl, přesto poskytl informace, jak postupovat. Konverzace skončila potvrdzení klienta, že je vše v pořádku a poděkováním. Avatar se rozloučil po zodpovězení dotazu.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"-","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyAMCSSLZq3","Shrnutí konverzace":"Klient se ptal na možnost získání úvěru na motorku a na možnosti pojištění. Avatar informoval o autopůjčce, kterou lze sjednat v aplikaci George, a o pojištění motorky ve spolupráci s pojišťovnami. Avatar přepojil klienta na online bankéře pro další informace.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyAZN3680lq","Shrnutí konverzace":"Klient požádal o blokaci karty. Avatar provedl ověření klienta a zablokoval kartu podle pokynů. Avatar se rozloučil po zodpovězení dotazu.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyAfk3NYN3D","Shrnutí konverzace":"Klient chtěl informace o úvěru na motorku a jejím pojištění. Avatar poskytl informace o možnostech sjednání úvěru i pojištění a klient nakonec projevil zájem sjednat pojištění s bankéřem. Avatar přepojil na online bankéře.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyAjfILHcqx","Shrnutí konverzace":"Klient chtěl zablokovat ztracenou kartu. Avatar začal proces ověření identity, ale nedokázal ho dokončit a klient byl přepojen na online bankéře. Avatar přepojil na operátora po selhání ověření identity.","Typ problému":"Platforma","Detail problému":"Selhání procesu ověření identity po zadání jména a data narození.","Doporučení":"Zkontrolovat funkčnost ověřovacího procesu, aby v budoucnu nedocházelo ke selhání.","Dopad":"High","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyAm5YflyM1","Shrnutí konverzace":"Klient požádal o zablokování platební karty. Avatar provedl ověření identity a zablokoval kartu podle klientova přání. Avatar ukončil konverzaci poté, co klient potvrdil, že je vše v pořádku.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyAqG8eGD6v","Shrnutí konverzace":"Klient chtěl vědět, zda může investovat v České spořitelně a zda je to bezpečné v aplikaci George. Avatar poskytl informace o investování a nakonec přepojil na online bankéře. Avatar přepojil na operátora.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyBki1lwr1L","Shrnutí konverzace":"Klient vyjádřil zájem o půjčku a o spojení s bankéřem. Avatar správně začal proces ověření, ale klient odmítl. Avatar následně přepojil klienta na operátora bez ověření. Avatar přepojil na operátora.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Bankéř","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyCy71vxdL0","Shrnutí konverzace":"Klient požádal o spojení s živým kolegou po odmítnutí ověření identity. Avatar zareagoval správně a přepojil na online bankéře. Avatar přepojil na operátora.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyDAV32Idl0","Shrnutí konverzace":"Klient se snažil ověřit svou identitu zadáním jména, data narození a telefonního čísla. Po úspěšném ověření vyjádřil přání být spojen s bankéřem. Avatar přepojil na operátora.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyDLzYcL1dr","Shrnutí konverzace":"Klient chtěl zablokovat svou kartu a komunikoval v angličtině. Avatar správně reagoval tím, že přepojil klienta na anglicky hovořícího poradce. Avatar přepojil na operátora.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyDkgMfRmm3","Shrnutí konverzace":"Klient projevil úmysl pokračovat v konverzaci, ale Avatar opakovaně žádal o ověření identity, aniž by uznal klientovy verbální projevy. Konverzace se zacyklila.","Typ problému":"Mini flow","Detail problému":"Avatar se zacyklil na požadavku ověření identity a nereagoval na změny v klientově komunikaci.","Doporučení":"Opravit logiku ověřovacího procesu tak, aby Avatar správně detekoval relevantní odpovědi klienta nebo navázal na komunikaci jiným způsobem.","Dopad":"High","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-28","_file":"2026-04-28"},{"ID konverzace":"3fyQWy18Mwam","Shrnutí konverzace":"Klient chtěl být přepojen na lidského operátora a Avatar potvrdil ověření a provedl přenos. Avatar přepojil na operátora.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"-","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-29","_file":"2026-04-29"},{"ID konverzace":"3fySWt2lfYsa","Shrnutí konverzace":"Klient se dotázal na penzijní spoření a jeho převod do České spořitelny. Avatar poskytl informace, ale na otázku ohledně průměrného výnosu fondů neměl dostatek informací. Konverzace skončila přepojením na online bankéře.","Typ problému":"KBase - chybí info","Detail problému":"Avatar nedokázal poskytnout přesné údaje o průměrném výnosu penzijních fondů.","Doporučení":"Doplnit databázi o průměrné výnosy penzijních fondů.","Dopad":"Medium","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-29","_file":"2026-04-29"},{"ID konverzace":"3fyUaS1biean","Shrnutí konverzace":"Klient vyslovil požadavek, který Avatar zřejmě nerozuměl, ale okamžitě přistoupil k ověřování identity klienta. Avatar následně přepojil klienta na online bankéře, konverzace proběhla efektivně.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"-","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-29","_file":"2026-04-29"},{"ID konverzace":"3fyUh011TyAk","Shrnutí konverzace":"Klient se pokoušel poskytnout údaje pro ověření, ale Avatar se několikrát zacyklil a opakoval výzvy k zadání stejného údaje. Konverzace se zacyklila při pokusu o zadání telefonního čísla.","Typ problému":"Mini flow","Detail problému":"Klient nebyl schopen dokončit proces ověření identity kvůli opakovaným výzvám Avatara, které vedly k zacyklení.","Doporučení":"Prozkoumat a opravit logiku ověřovacího procesu, aby se zabránilo zacyklení při neúspěšném zadání údajů.","Dopad":"High","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-29","_file":"2026-04-29"},{"ID konverzace":"3fyZJC3hF3CX","Shrnutí konverzace":"Klient se dotazoval na pomoc s investicemi a Avatar správně přepojil na online bankéře. Avatar přepojil na operátora.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"-","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-29","_file":"2026-04-29"},{"ID konverzace":"3fyZhB3P7YhT","Shrnutí konverzace":"Klient požádal o přepojení na lidského operátora. Avatar korektně reagoval a přepojil klienta na online bankéře. Konverzace skončila přepojením na operátora.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"-","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-29","_file":"2026-04-29"},{"ID konverzace":"3fyqFU3SF0ae","Shrnutí konverzace":"Klient požádal o přepojení na operátora. Avatar správně zahájil proces ověření identity a následně klienta úspěšně přepojil na online bankéře. Avatar přepojil na operátora.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"-","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-30","_file":"2026-04-30"},{"ID konverzace":"3fyqH83qwc6Q","Shrnutí konverzace":"Klient požádal o přepojení na bankéře. Avatar rozuměl požadavku a okamžitě přepojil na online bankéře. Avatar přepojil na operátora.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"-","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-30","_file":"2026-04-30"},{"ID konverzace":"3fyqbg16ZCU8","Shrnutí konverzace":"Klient se zmínil o tématu 'školství', což byl nesrozumitelný požadavek. Avatar správně pokračoval k ověření identity. Klient přestal reagovat po výzvě k ověření.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"-","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-30","_file":"2026-04-30"},{"ID konverzace":"3fyqbv1dCVP2","Shrnutí konverzace":"Klient se zeptal, jak změnit PIN ke kartě a co dělat, když kartu nevidí v aplikaci George. Avatar nejprve požádal o ověření identity, které klient odmítl, a následně bez odpovědi na dotaz přepojil klienta na online bankéře. Avatar přepojil na operátora, což bylo zbytečné.","Typ problému":"Handover","Detail problému":"Avatar přepojil na online bankéře i přesto, že dotazy byly v jeho kompetenci k zodpovězení.","Doporučení":"Avatar by měl zodpovědět dotaz na změnu PINu k kartě a na viditelnost karty v aplikaci George sám, bez potřeby přepojení na operátora.","Dopad":"Low","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-30","_file":"2026-04-30"},{"ID konverzace":"3fyqd73GI15g","Shrnutí konverzace":"Klient se ptal, kde najde karty v aplikaci George. Avatar požádal o ověření identity, ale po nejasné odpovědi klienta se zacyklil a opět vyzval klienta k ověření. Konverzace se zacyklila.","Typ problému":"Mini flow","Detail problému":"Avatar se zacyklil při výzvě k ověření identity po nejasné odpovědi klienta.","Doporučení":"Zlepšit algoritmus pro detekci nejasných odpovědí klienta a poskytnout alternativní možnost pro pokračování v konverzaci.","Dopad":"High","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-30","_file":"2026-04-30"},{"ID konverzace":"3fyqdU2p1fFg","Shrnutí konverzace":"Klient se dotazoval na přidání karty do Apple Pay a následně chtěl informace o získání nové kreditní karty jako cizinec. Avatar poskytl informace k Apple Pay, ale přiznal nedostatek informací o tom, zda je nutné navštívit pobočku jako cizinec. Konverzace skončila s informací o možnosti požádat o kartu na pobočce nebo v aplikaci George.","Typ problému":"KBase - chybí info","Detail problému":"Avatar nemá dostatek informací o procesu získání kreditní karty pro cizince.","Doporučení":"Aktualizovat KBase o informace týkající se procesu získávání kreditní karty pro cizince.","Dopad":"Medium","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-30","_file":"2026-04-30"},{"ID konverzace":"3fyr0N2Q4IWs","Shrnutí konverzace":"Klient potřeboval řešit blokaci účtu a hledal informace o neprovedené transakci. Avatar provedl ověření identity úspěšně a bez problémů. Nakonec avatar přepojil klienta na online bankéře bez pokusu odpovědět na dotaz přímo.","Typ problému":"Handover","Detail problému":"Avatar nabídl přepojení na téma, které nevyžadovalo handover dle pravidel.","Doporučení":"Zlepšit schopnost avatara zpracovat dotazy ohledně transakcí bez nutnosti přepojení.","Dopad":"Low","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-30","_file":"2026-04-30"},{"ID konverzace":"3fyybC398YG5","Shrnutí konverzace":"Klient chtěl najít bydlení, ale ověření nebylo dokončeno kvůli odmítnutí klienta sdílet telefonní číslo. Avatar se pokusil pomoci i bez ověření a klient vyjádřil spokojenost, ale také projevil frustraci. Avatar zbytečně nabídl přepojení na online bankéře, které nebylo potřebné. Nakonec se rozloučili.","Typ problému":"Handover","Detail problému":"Avatar nabídl přepojení na online bankéře, přestože téma konverzace nespadá do pravidel přepojení.","Doporučení":"Zajistit, aby avatar nenabízel přepojení mimo pravidla bez potřeby.","Dopad":"Low","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-04-30","_file":"2026-04-30"},{"ID konverzace":"3fzsAt2yzOiE","Shrnutí konverzace":"Klient chtěl změnit strukturu důchodového fondu a řešit problém s přístupem do aplikace George. Avatar provedl ověření identity klienta úspěšně. Avatar nakonec přepojil klienta na online bankéře, ačkoli téma nespadá do pravidel pro přepojení.","Typ problému":"Handover","Detail problému":"Avatar zbytečně přepojil klienta na online bankéře, ačkoli téma nevynucovalo handover podle pravidel.","Doporučení":"Zajistit, aby avatar nepřepojoval klienty zbytečně na témata, která může sám vyřešit.","Dopad":"Low","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-05-03","_file":"2026-05-03"},{"ID konverzace":"3f04Eg2eBxBn","Shrnutí konverzace":"Klient požádal o blokaci karty, avatar reagoval žádostí o ověření identity. Konverzace skončila, protože klient po výzvě k ověření identity přestal reagovat.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"-","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-05-04","_file":"2026-05-04"},{"ID konverzace":"3f06lC1SYmvl","Shrnutí konverzace":"Klient chtěl založit účet. Avatar několikrát opakoval výzvy k ověření identity kvůli zacyklení, přestože klient zadával údaje. Ověření bylo nakonec úspěšně dokončeno, ale konverzace se zacyklila znovu při návrhu založení účtu.","Typ problému":"Mini flow","Detail problému":"Opakování dotazů k ověření identity klienta a k založení účtu, které vedlo k zacyklení.","Doporučení":"Opravit logiku ověřování identity a procesu založení účtu, aby se zabránilo zacyklení.","Dopad":"High","Akce":"Vyžaduje pozornost","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-05-04","_file":"2026-05-04"},{"ID konverzace":"3f08Wh5BXqa3","Shrnutí konverzace":"Klient požádal o mluvení s lidským kolegou ohledně kreditní karty a avatar ho přepojil na online bankéře. Avatar správně reagoval na klientovu žádost. Avatar přepojil na operátora.","Typ problému":"Bez problému","Detail problému":"","Doporučení":"","Dopad":"-","Akce":"Žádná","Ticket":"","Iniciátor konverzace":"Klient","_date":"2026-05-04","_file":"2026-05-04"}];
+
+// ── Color palette ──
+const C = {
+    blue:'#3b82f6', red:'#ef4444', amber:'#f59e0b', green:'#22c55e',
+    purple:'#8b5cf6', teal:'#14b8a6', pink:'#ec4899', slate:'#64748b',
+    indigo:'#6366f1', orange:'#f97316', lime:'#84cc16', cyan:'#06b6d4',
+};
+
+const TYPE_COLORS = {
+    'Bez problému': C.green,
+    'Mini flow': C.red,
+    'Platforma': C.purple,
+    'KBase - chybí info': C.amber,
+    'Handover': C.orange,
+};
+const IMPACT_COLORS = { 'High': C.red, 'Medium': C.amber, 'Low': C.blue };
+
+// ── State ──
+let selectedDate = 'all';
+let selectedInitiator = 'all';
+const dates = [...new Set(ALL_DATA.map(r => r._date))].sort();
+const initiators = [...new Set(ALL_DATA.map(r => r['Iniciátor konverzace']).filter(Boolean))].sort();
+let charts = {};
+
+// ── Filter bar ──
+const filterBar = document.getElementById('filterBar');
+function renderFilters() {
+    filterBar.innerHTML = '';
+    const allBtn = document.createElement('button');
+    allBtn.className = 'filter-btn' + (selectedDate === 'all' ? ' active' : '');
+    allBtn.textContent = 'Všechny dny';
+    allBtn.onclick = () => { selectedDate = 'all'; update(); };
+    filterBar.appendChild(allBtn);
+
+    for (const d of dates) {
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn' + (selectedDate === d ? ' active' : '');
+        const dateObj = new Date(d + 'T00:00:00');
+        btn.textContent = dateObj.toLocaleDateString('cs-CZ', { day:'numeric', month:'short' });
+        btn.onclick = () => { selectedDate = d; update(); };
+        filterBar.appendChild(btn);
+    }
+
+    // Initiator filter
+    const iBar = document.getElementById('initiatorBar');
+    iBar.innerHTML = '';
+    const allI = document.createElement('button');
+    allI.className = 'filter-btn' + (selectedInitiator === 'all' ? ' active' : '');
+    allI.textContent = 'Všichni iniciátoři';
+    allI.onclick = () => { selectedInitiator = 'all'; update(); };
+    iBar.appendChild(allI);
+    for (const i of initiators) {
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn' + (selectedInitiator === i ? ' active' : '');
+        btn.textContent = i;
+        btn.onclick = () => { selectedInitiator = i; update(); };
+        iBar.appendChild(btn);
+    }
+}
+
+function filteredData() {
+    let d = selectedDate === 'all' ? ALL_DATA : ALL_DATA.filter(r => r._date === selectedDate);
+    if (selectedInitiator !== 'all') d = d.filter(r => r['Iniciátor konverzace'] === selectedInitiator);
+    return d;
+}
+
+// ── KPI ──
+function renderKPI(data) {
+    const grid = document.getElementById('kpiGrid');
+    grid.innerHTML = '';
+    const total = data.length;
+    const ok = data.filter(r => r['Typ problému'] === 'Bez problému').length;
+    const problems = data.filter(r => r['Typ problému'] && r['Typ problému'] !== 'Bez problému' && r['Typ problému'] !== '').length;
+
+    // Top problem type
+    const problemRows = data.filter(r => r['Typ problému'] && r['Typ problému'] !== 'Bez problému' && r['Typ problému'] !== '');
+    const problemTypeCounts = {};
+    for (const r of problemRows) { const t = r['Typ problému']; problemTypeCounts[t] = (problemTypeCounts[t]||0)+1; }
+    const topProblem = Object.entries(problemTypeCounts).sort((a,b) => b[1]-a[1])[0];
+    const topProblemLabel = topProblem ? topProblem[0] : '—';
+    const topProblemCount = topProblem ? topProblem[1] : 0;
+
+    const handoff = data.filter(r => {
+        const s = (r['Shrnutí konverzace'] || '').toLowerCase();
+        return s.includes('přepojil na operátora') || s.includes('přepojil na online bankéře') || s.includes('přepojil klienta');
+    }).length;
+    const techErrors = data.filter(r => {
+        const s = (r['Shrnutí konverzace'] || '' + r['Detail problému'] || '').toLowerCase();
+        return s.includes('nenačetl') || s.includes('selhání') || s.includes('technickou chybu');
+    }).length;
+
+    // Filter functions for each KPI
+    const kpiFilters = {
+        'all': r => true,
+        'ok': r => r['Typ problému'] === 'Bez problému',
+        'problems': r => r['Typ problému'] && r['Typ problému'] !== 'Bez problému' && r['Typ problému'] !== '',
+        'handoff': r => { const s = (r['Shrnutí konverzace']||'').toLowerCase(); return s.includes('přepojil na operátora') || s.includes('přepojil na online bankéře') || s.includes('přepojil klienta'); },
+        'techErrors': r => { const s = (r['Shrnutí konverzace']||'' + r['Detail problému']||'').toLowerCase(); return s.includes('nenačetl') || s.includes('selhání') || s.includes('technickou chybu'); },
+    };
+    window._kpiFilters = kpiFilters;
+
+    const kpis = [
+        { v: total, l: 'Celkem konverzací', cls: '', key: 'all' },
+        { v: ok, l: 'Bez problému', cls: 'success', pct: total ? Math.round(ok/total*100)+'%' : '', key: 'ok' },
+        { v: problems, l: 'S problémem', cls: 'warning', pct: total ? Math.round(problems/total*100)+'%' : '', key: 'problems' },
+        { v: handoff, l: 'Přepojení na operátora', cls: 'info', pct: total ? Math.round(handoff/total*100)+'%' : '', key: 'handoff' },
+        { v: techErrors, l: 'Technické chyby', cls: 'danger', key: 'techErrors' },
+    ];
+    for (const k of kpis) {
+        const card = document.createElement('div');
+        card.className = 'kpi-card ' + k.cls;
+        card.dataset.kpiKey = k.key;
+        card.innerHTML = '<div class="kpi-value">' + k.v + '</div>'
+            + (k.pct ? '<div class="kpi-pct">' + k.pct + '</div>' : '')
+            + '<div class="kpi-label">' + k.l + '</div>';
+        card.onclick = () => showKPIDetail(k.key, k.l, filteredData());
+        grid.appendChild(card);
+    }
+}
+
+let activeKPI = null;
+
+function showKPIDetail(key, label, data) {
+    // Toggle off if clicking same KPI
+    if (activeKPI === key) { closeKPIDetail(); return; }
+    activeKPI = key;
+
+    // Highlight active card
+    document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('selected'));
+    const activeCard = document.querySelector('.kpi-card[data-kpi-key="' + key + '"]');
+    if (activeCard) activeCard.classList.add('selected');
+
+    const detail = document.getElementById('kpiDetail');
+    detail.classList.add('visible');
+    document.getElementById('kpiDetailTitle').textContent = label;
+
+    const filterFn = window._kpiFilters[key] || (() => true);
+    const rows = data.filter(filterFn);
+
+    const tbody = document.querySelector('#kpiDetailTable tbody');
+    tbody.innerHTML = '';
+    for (const r of rows) {
+        const tr = document.createElement('tr');
+        const dateStr = r._date ? new Date(r._date+'T00:00:00').toLocaleDateString('cs-CZ', { day:'numeric', month:'short' }) : '—';
+        tr.innerHTML =
+            '<td>' + dateStr + '</td>' +
+            '<td><code>' + (r['ID konverzace']||'—') + '</code></td>' +
+            '<td>' + (r['Shrnutí konverzace']||'—') + '</td>' +
+            '<td><span class="badge badge-type">' + (r['Typ problému']||'—') + '</span></td>' +
+            '<td>' + (r['Iniciátor konverzace']||'—') + '</td>';
+        tbody.appendChild(tr);
+    }
+    detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeKPIDetail() {
+    activeKPI = null;
+    document.getElementById('kpiDetail').classList.remove('visible');
+    document.querySelectorAll('.kpi-card').forEach(c => c.classList.remove('selected'));
+}
+
+// ── Chart helpers ──
+function countBy(arr, key) {
+    return arr.reduce((a, r) => { const v = r[key] || '(prázdné)'; a[v] = (a[v]||0)+1; return a; }, {});
+}
+
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function renderCharts(data) {
+    // 1) Trend
+    destroyChart('trend');
+    const trendLabels = dates.map(d => {
+        const dt = new Date(d+'T00:00:00');
+        return dt.toLocaleDateString('cs-CZ', { day:'numeric', month:'short' });
+    });
+    const src = selectedInitiator === 'all' ? ALL_DATA : ALL_DATA.filter(r => r['Iniciátor konverzace'] === selectedInitiator);
+    const totalPerDay = dates.map(d => src.filter(r => r._date === d).length);
+
+    charts['trend'] = new Chart(document.getElementById('chartTrend'), {
+        type: 'bar',
+        data: {
+            labels: trendLabels,
+            datasets: [
+                { label: 'Počet konverzací', data: totalPerDay, backgroundColor: C.blue, borderRadius: 6 },
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero:true, ticks: { stepSize:1 } } }
+        }
+    });
+
+    // 2) Problem type doughnut
+    destroyChart('problemType');
+    const ptCounts = countBy(data, 'Typ problému');
+    charts['problemType'] = new Chart(document.getElementById('chartProblemType'), {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(ptCounts),
+            datasets: [{ data: Object.values(ptCounts),
+                backgroundColor: Object.keys(ptCounts).map(k => TYPE_COLORS[k] || C.slate),
+                borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: { responsive:true, maintainAspectRatio:true,
+            plugins: { legend: { position:'bottom', labels: { padding:14, usePointStyle:true } } } }
+    });
+
+
+
+    // Recommendations list
+    const recDiv = document.getElementById('recommendationsList');
+    recDiv.innerHTML = '';
+    const recs = data.filter(r => r['Doporučení'] && r['Doporučení'].trim());
+    if (recs.length === 0) {
+        recDiv.innerHTML = '<p style="color:var(--muted);font-size:.85rem;padding:.5rem">Žádná doporučení pro vybraný filtr.</p>';
+    } else {
+        const ul = document.createElement('ul');
+        ul.style.cssText = 'list-style:none;padding:0;margin:0;font-size:.84rem;';
+        for (const r of recs) {
+            const li = document.createElement('li');
+            li.style.cssText = 'padding:.6rem .5rem;border-bottom:1px solid var(--border);';
+            const typeColor = TYPE_COLORS[r['Typ problému']] || C.slate;
+            li.innerHTML = '<span class="badge" style="background:' + typeColor + '22;color:' + typeColor + ';margin-bottom:.25rem;display:inline-block">' + (r['Typ problému']||'') + '</span> '
+                + '<span style="color:var(--muted);font-size:.75rem">' + (r['ID konverzace']||'') + '</span>'
+                + '<div style="margin-top:.2rem">' + r['Doporučení'] + '</div>';
+            ul.appendChild(li);
+        }
+        recDiv.appendChild(ul);
+    }
+
+    // 5) Handoff by problem type
+    destroyChart('handoff');
+    const handoffRows = data.filter(r => {
+        const s = (r['Shrnutí konverzace']||'').toLowerCase();
+        return s.includes('přepojil na operátora') || s.includes('přepojil na online bankéře') || s.includes('přepojil klienta');
+    });
+    const handoffByType = {};
+    for (const r of handoffRows) { const t = r['Typ problému'] || 'Nezadáno'; handoffByType[t] = (handoffByType[t]||0)+1; }
+    charts['handoff'] = new Chart(document.getElementById('chartHandoff'), {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(handoffByType),
+            datasets: [{ data: Object.values(handoffByType),
+                backgroundColor: Object.keys(handoffByType).map(k => TYPE_COLORS[k] || C.slate),
+                borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: { responsive:true, maintainAspectRatio:true,
+            plugins: { legend: { position:'bottom', labels: { padding:14, usePointStyle:true } } } }
+    });
+}
+
+// ── Table ──
+function renderTable(data) {
+    const tbody = document.querySelector('#attentionTable tbody');
+    tbody.innerHTML = '';
+    const rows = data.filter(r => r['Akce'] === 'Vyžaduje pozornost');
+    for (const r of rows) {
+        const tr = document.createElement('tr');
+        const impClass = r['Dopad'] === 'High' ? 'badge-high' : r['Dopad'] === 'Medium' ? 'badge-medium' : r['Dopad'] === 'Low' ? 'badge-low' : 'badge-type';
+        const dateStr = r._date ? new Date(r._date+'T00:00:00').toLocaleDateString('cs-CZ', { day:'numeric', month:'short' }) : '—';
+        tr.innerHTML =
+            '<td>' + dateStr + '</td>' +
+            '<td><code>' + (r['ID konverzace']||'—') + '</code></td>' +
+            '<td><span class="badge badge-type">' + (r['Typ problému']||'—') + '</span></td>' +
+            '<td><span class="badge ' + impClass + '">' + (r['Dopad']||'—') + '</span></td>' +
+            '<td>' + (r['Detail problému']||'—') + '</td>' +
+            '<td>' + (r['Doporučení']||'—') + '</td>' +
+            '<td>' + (r['Iniciátor konverzace']||'—') + '</td>';
+        tbody.appendChild(tr);
+    }
+}
+
+// ── Update all ──
+function update() {
+    renderFilters();
+    const data = filteredData();
+    renderKPI(data);
+    renderCharts(data);
+    renderTable(data);
+    // Re-open KPI detail if one was active
+    if (activeKPI) {
+        const label = document.querySelector('.kpi-card[data-kpi-key="' + activeKPI + '"]');
+        if (label) showKPIDetail(activeKPI, label.querySelector('.kpi-label').textContent, data);
+        else closeKPIDetail();
+    }
+}
+
+update();
+</script>
+</body>
+</html>
