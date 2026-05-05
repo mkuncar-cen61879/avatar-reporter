@@ -1,4 +1,4 @@
-# AVATAR Reporter
+# AVATAR Dashboard
 
 Dashboard hodnocení produkčních konverzací avatara.  
 Po přidání nových dat se dashboard **automaticky přegeneruje a publikuje** přes GitHub Actions + GitHub Pages.
