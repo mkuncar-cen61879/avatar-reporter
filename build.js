@@ -309,7 +309,7 @@ const IMPACT_COLORS = { 'High': C.red, 'Medium': C.amber, 'Low': C.blue };
 
 // ── State ──
 let selectedDate = 'all';
-let selectedInitiator = 'all';
+let selectedInitiator = 'Klient';
 const dates = [...new Set(ALL_DATA.map(r => r._date))].sort();
 const initiators = [...new Set(ALL_DATA.map(r => r['Iniciátor konverzace']).filter(Boolean))].sort();
 let charts = {};

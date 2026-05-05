@@ -83,7 +83,7 @@
 <div class="header">
     <div style="max-width:1360px;margin:0 auto;">
         <h1>AVATAR</h1>
-        <p>Hodnocení produkčních konverzací &bull; Vygenerováno 4. 5. 2026</p>
+        <p>Hodnocení produkčních konverzací &bull; Vygenerováno 5. 5. 2026</p>
     </div>
 </div>
 
@@ -157,7 +157,7 @@ const IMPACT_COLORS = { 'High': C.red, 'Medium': C.amber, 'Low': C.blue };
 
 // ── State ──
 let selectedDate = 'all';
-let selectedInitiator = 'all';
+let selectedInitiator = 'Klient';
 const dates = [...new Set(ALL_DATA.map(r => r._date))].sort();
 const initiators = [...new Set(ALL_DATA.map(r => r['Iniciátor konverzace']).filter(Boolean))].sort();
 let charts = {};
