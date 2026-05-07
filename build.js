@@ -248,7 +248,7 @@ const html = `<!DOCTYPE html>
         <h3 id="kpiDetailTitle"></h3>
         <table id="kpiDetailTable">
             <thead><tr>
-                <th>Datum</th><th>ID</th><th>Shrnutí</th><th>Typ problému</th><th>Iniciátor</th>
+                <th>Datum</th><th>ID</th><th>Shrnutí</th><th>Typ problému</th><th>Flagy</th><th>Iniciátor</th>
             </tr></thead>
             <tbody></tbody>
         </table>
@@ -278,7 +278,7 @@ const html = `<!DOCTYPE html>
         <h3>🔴 Konverzace vyžadující pozornost</h3>
         <table id="attentionTable">
             <thead><tr>
-                <th>Datum</th><th>ID</th><th>Typ problému</th><th>Dopad</th><th>Shrnutí konverzace</th><th>Doporučení</th><th>Iniciátor</th>
+                <th>Datum</th><th>ID</th><th>Typ problému</th><th>Dopad</th><th>Shrnutí konverzace</th><th>Flagy</th><th>Doporučení</th><th>Iniciátor</th>
             </tr></thead>
             <tbody></tbody>
         </table>
@@ -439,6 +439,7 @@ function showKPIDetail(key, label, data) {
             '<td><code>' + (r['ID konverzace']||'—') + '</code></td>' +
             '<td>' + (r['Shrnutí konverzace']||'—') + '</td>' +
             '<td><span class="badge badge-type">' + (r['Typ problému']||'—') + '</span></td>' +
+            '<td>' + (r['Flagy']||'—') + '</td>' +
             '<td>' + (r['Iniciátor konverzace']||'—') + '</td>';
         tbody.appendChild(tr);
     }
@@ -557,6 +558,7 @@ function renderTable(data) {
             '<td><span class="badge badge-type">' + (r['Typ problému']||'—') + '</span></td>' +
             '<td><span class="badge ' + impClass + '">' + (r['Dopad']||'—') + '</span></td>' +
             '<td>' + (r['Shrnutí konverzace']||'—') + '</td>' +
+            '<td>' + (r['Flagy']||'—') + '</td>' +
             '<td>' + (r['Doporučení']||'—') + '</td>' +
             '<td>' + (r['Iniciátor konverzace']||'—') + '</td>';
         tbody.appendChild(tr);
