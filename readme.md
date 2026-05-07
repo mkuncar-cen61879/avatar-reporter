@@ -32,7 +32,7 @@ Po přidání nových dat se dashboard **automaticky přegeneruje a publikuje** 
 - **První řádek** musí být hlavička s těmito sloupci:
 
 ```
-ID konverzace	Shrnutí konverzace	Typ problému	Detail problému	Doporučení	Dopad	Akce	Ticket	Iniciátor konverzace
+ID konverzace	Shrnutí konverzace	Typ problému	Detail problému	Flagy	Doporučení	Dopad	Akce	Ticket	Iniciátor konverzace
 ```
 
 Každý další řádek = jedna konverzace.
@@ -56,7 +56,7 @@ open dashboard.html  # otevře v prohlížeči
    git push -u origin main
    ```
 4. Po prvním úspěšném buildu bude dashboard dostupný na:  
-   `https://VASE-ORG.github.io/avatar-reporter/`
+   `https://mkuncar-cen61879.github.io/avatar-reporter/`
 
 ## Struktura projektu
 
