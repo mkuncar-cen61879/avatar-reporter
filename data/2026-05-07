@@ -1,0 +1,5 @@
+ID konverzace	Shrnutí konverzace	Typ problému	Detail problému	Flagy	Doporučení	Dopad	Akce	Ticket	Iniciátor konverzace
+3f13NI1ETjM9	Avatar pozdravil klienta a nabídl pomoc. Klient neodpověděl.	Bez problému				-	Žádná		Klient
+3f15xl3mYfUR	Klientovo sdělení 'Řeším.' neposkytuje dostatečný kontext pro avatar, který logicky pokračuje ověřením identity. Bez dalšího konkrétního vstupu od klienta nemůže avatar pokračovat.	Bez problému		Nejasný / nekontextový vstup klienta — STT šum nebo mix jazyků ve vstupu klienta		-	Žádná		Klient
+3f15yH1ZkXZ3	Klient požádal o spojení s bankéřem. Avatar úspěšně provedl ověření identity a následně přepojil klienta na online bankéře. Konverzace skončila přepojením.	Bez problému				-	Žádná		Klient
+3f190T1fM2fO	Klient chtěl zrušit běžný účet, což avatar vysvětlil. Ověření identity klientem bylo úspěšně dokončeno, a avatar zopakoval informace o rušení účtu po nejasné odpovědi klienta.	Bez problému		Avatar opakoval výzvu kvůli nejasnému vstupu klienta; Nejasný / nekontextový vstup klienta — STT šum nebo mix jazyků		-	Žádná		Klient
