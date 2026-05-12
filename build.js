@@ -224,6 +224,18 @@ const html = `<!DOCTYPE html>
 
         .footer { text-align: center; padding: 1.5rem; color: var(--muted); font-size: .8rem; }
 
+        /* Overview */
+        .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+        .overview-card { background: var(--card); border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+        .overview-card h3 { font-size: .95rem; margin-bottom: .75rem; }
+        .overview-item { display: flex; align-items: center; gap: .75rem; padding: .5rem 0; border-bottom: 1px solid var(--border); }
+        .overview-item:last-child { border-bottom: none; }
+        .overview-bar-wrap { flex: 1; height: 8px; background: #f1f5f9; border-radius: 99px; overflow: hidden; }
+        .overview-bar { height: 100%; border-radius: 99px; transition: width .4s ease; }
+        .overview-label { min-width: 140px; font-size: .84rem; font-weight: 500; }
+        .overview-value { font-size: .84rem; font-weight: 600; min-width: 60px; text-align: right; }
+        @media (max-width: 640px) { .overview-grid { grid-template-columns: 1fr; } }
+
         @media (max-width: 640px) {
             .chart-grid { grid-template-columns: 1fr; }
             .container { padding: 1rem; }
@@ -271,6 +283,17 @@ const html = `<!DOCTYPE html>
         <div class="chart-card">
             <h3>Přepojení dle typu problému</h3>
             <div style="max-height:320px"><canvas id="chartHandoff"></canvas></div>
+        </div>
+    </div>
+
+    <div class="overview-grid" id="overviewGrid">
+        <div class="overview-card" id="overviewStrengths">
+            <h3>✅ Silné stránky</h3>
+            <div id="strengthsList"></div>
+        </div>
+        <div class="overview-card" id="overviewImprove">
+            <h3>⚠️ Oblasti ke zlepšení</h3>
+            <div id="improveList"></div>
         </div>
     </div>
 
@@ -394,7 +417,7 @@ function renderKPI(data) {
     const kpis = [
         { v: total, l: 'Celkem konverzací', cls: '', key: 'all' },
         { v: ok, l: 'Bez problému', cls: 'success', pct: total ? Math.round(ok/total*100)+'%' : '', key: 'ok' },
-        { v: problems, l: 'S problémem', cls: 'warning', pct: total ? Math.round(problems/total*100)+'%' : '', key: 'problems' },
+        { v: problems, l: 'Vyžaduje pozornost', cls: 'warning', pct: total ? Math.round(problems/total*100)+'%' : '', key: 'problems' },
         { v: handoff, l: 'Přepojení na operátora', cls: 'info', pct: total ? Math.round(handoff/total*100)+'%' : '', key: 'handoff' },
         { v: techErrors, l: 'Technické chyby', cls: 'danger', key: 'techErrors' },
     ];
@@ -543,6 +566,61 @@ function renderCharts(data) {
     });
 }
 
+// ── Overview ──
+function renderOverview(data) {
+    const total = data.length;
+    if (total === 0) {
+        document.getElementById('strengthsList').innerHTML = '<p style="color:var(--muted);font-size:.85rem">Žádná data</p>';
+        document.getElementById('improveList').innerHTML = '<p style="color:var(--muted);font-size:.85rem">Žádná data</p>';
+        return;
+    }
+    const ok = data.filter(r => r['Typ problému'] === 'Bez problému').length;
+    const okPct = Math.round(ok / total * 100);
+    const problems = data.filter(r => r['Typ problému'] && r['Typ problému'] !== 'Bez problému' && r['Typ problému'] !== '').length;
+    const handoff = data.filter(r => { const s = (r['Shrnutí konverzace']||'').toLowerCase(); return s.includes('přepojil na operátora') || s.includes('přepojil na online bankéře') || s.includes('přepojil klienta'); }).length;
+    const handoffPct = Math.round(handoff / total * 100);
+    const techErrors = data.filter(r => { const s = (r['Shrnutí konverzace']||'' + r['Detail problému']||'').toLowerCase(); return s.includes('nenačetl') || s.includes('selhání') || s.includes('technickou chybu'); }).length;
+    const techPct = total ? Math.round(techErrors / total * 100) : 0;
+
+    // Strengths
+    const strengths = [
+        { label: 'Bez problému', pct: okPct, color: C.green },
+        { label: 'Bez tech. chyb', pct: 100 - techPct, color: C.teal },
+        { label: 'Bez přepojení', pct: 100 - handoffPct, color: C.blue },
+    ];
+    const sHtml = strengths.map(s =>
+        '<div class="overview-item">' +
+        '<span class="overview-label">' + s.label + '</span>' +
+        '<div class="overview-bar-wrap"><div class="overview-bar" style="width:' + s.pct + '%;background:' + s.color + '"></div></div>' +
+        '<span class="overview-value" style="color:' + s.color + '">' + s.pct + '%</span>' +
+        '</div>'
+    ).join('');
+    document.getElementById('strengthsList').innerHTML = sHtml;
+
+    // Areas to improve — top problem types sorted by count
+    const problemRows = data.filter(r => r['Typ problému'] && r['Typ problému'] !== 'Bez problému' && r['Typ problému'] !== '');
+    const typeCounts = {};
+    for (const r of problemRows) { const t = r['Typ problému']; typeCounts[t] = (typeCounts[t]||0)+1; }
+    const sorted = Object.entries(typeCounts).sort((a,b) => b[1] - a[1]);
+    const maxCount = sorted.length ? sorted[0][1] : 1;
+
+    if (sorted.length === 0) {
+        document.getElementById('improveList').innerHTML = '<p style="color:var(--muted);font-size:.85rem">Žádné problémy 🎉</p>';
+        return;
+    }
+
+    const iHtml = sorted.map(([type, count]) => {
+        const pct = Math.round(count / maxCount * 100);
+        const color = TYPE_COLORS[type] || C.slate;
+        return '<div class="overview-item">' +
+            '<span class="overview-label">' + type + '</span>' +
+            '<div class="overview-bar-wrap"><div class="overview-bar" style="width:' + pct + '%;background:' + color + '"></div></div>' +
+            '<span class="overview-value">' + count + '× <span style="color:var(--muted);font-weight:400">(' + Math.round(count/total*100) + '%)</span></span>' +
+            '</div>';
+    }).join('');
+    document.getElementById('improveList').innerHTML = iHtml;
+}
+
 // ── Table ──
 function renderTable(data) {
     const tbody = document.querySelector('#attentionTable tbody');
@@ -571,6 +649,7 @@ function update() {
     const data = filteredData();
     renderKPI(data);
     renderCharts(data);
+    renderOverview(data);
     renderTable(data);
     // Re-open KPI detail if one was active
     if (activeKPI) {
