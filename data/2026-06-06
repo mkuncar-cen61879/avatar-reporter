@@ -1,0 +1,3 @@
+ID konverzace	Shrnutí konverzace	Typ problému	Detail problému	Flagy	Doporučení	Dopad	Akce	Ticket	Iniciátor konverzace
+3g8y1j1OM8Sl	Avatar klienta přivítal, ale klient nereagoval. Konverzace byla ukončena automaticky kvůli nedostatečné aktivitě klienta.	Bez problému				-	Žádná		Klient
+3g93h93EXqlx	Klient se snažil ověřit svou identitu, ale měl problémy s jasností vstupu, což avatar opakovaně žádal o clarifikaci. Po úspěšném ověření klient požádal o informace o získání nové platební karty, které avatar poskytl. Konverzace skončila bez explicitního rozloučení, avatar však popřál klientovi příjemný den.	Bez problému		Nejasný / nekontextový vstup klienta (5×) — STT šum nebo mix jazyků; Avatar opakoval výzvu k ověření kvůli nesrozumitelným odpovědím klienta		-	Žádná		Klient
