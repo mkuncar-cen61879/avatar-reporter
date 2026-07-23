@@ -144,8 +144,8 @@ console.log(`Total rows: ${allRows.length}`);
 
 // Escape for safe embedding in JS template literal
 const dataJSON = JSON.stringify(allRows, null, 0)
-  .replace(/\\/g, '\\\\')
   .replace(/`/g, '\\`')
+  .replace(/\$\{/g, '\\${')
   .replace(/<\/script/gi, '<\\/script');
 
 // ── HTML Template ────────────────────────────────────────────
