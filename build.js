@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DATA_DIR = path.join(__dirname, 'data');
-const OUT_FILE = path.join(__dirname, 'dashboard.html');
+const OUT_FILE = path.join(__dirname, 'index.html');
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -142,10 +142,8 @@ for (const file of dataFiles) {
 
 console.log(`Total rows: ${allRows.length}`);
 
-// Escape for safe embedding in JS template literal
+// Escape for safe embedding in <script> tag
 const dataJSON = JSON.stringify(allRows, null, 0)
-  .replace(/\\/g, '\\\\')
-  .replace(/`/g, '\\`')
   .replace(/<\/script/gi, '<\\/script');
 
 // ── HTML Template ────────────────────────────────────────────
